@@ -12,7 +12,7 @@ import {
   archiveStudent,
 } from "@/modules/academic/service";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/v1/students/:id
@@ -20,21 +20,22 @@ type Params = { params: { id: string } };
  * هذه أهم نقطة أمنية بكامل الوحدة — راجعها security-reviewer Agent إلزامياً قبل الدمج.
  */
 export async function GET(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
 
   const { role, id: userId } = session.user;
 
   if (hasRole(role, ["ADMIN", "ACCOUNTANT"])) {
-    const student = await getStudentById(params.id);
+    const student = await getStudentById(id);
     if (!student) return apiError("NOT_FOUND", "الطالب غير موجود");
     return apiSuccess(student);
   }
 
-  const { guardianUserId, ownUserId } = await getStudentAccessInfo(params.id);
+  const { guardianUserId, ownUserId } = await getStudentAccessInfo(id);
 
   const isTeacherOfStudent =
-    role === "TEACHER" ? await isTeacherAssignedToStudent(userId, params.id) : false;
+    role === "TEACHER" ? await isTeacherAssignedToStudent(userId, id) : false;
 
   const allowed = canAccessStudent({
     requesterRole: role as "ADMIN" | "TEACHER" | "PARENT" | "STUDENT" | "ACCOUNTANT",
@@ -49,13 +50,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return apiError("FORBIDDEN", "لا صلاحية للوصول لبيانات هذا الطالب");
   }
 
-  const student = await getStudentById(params.id);
+  const student = await getStudentById(id);
   if (!student) return apiError("NOT_FOUND", "الطالب غير موجود");
   return apiSuccess(student);
 }
 
 /** PATCH /api/v1/students/:id — الدور: Admin فقط */
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
   if (!hasRole(session.user.role, ["ADMIN"])) {
@@ -66,18 +68,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const parsed = updateStudentSchema.safeParse(body);
   if (!parsed.success) return apiError("VALIDATION_ERROR", "بيانات التعديل غير صحيحة");
 
-  const updated = await updateStudent(params.id, parsed.data);
+  const updated = await updateStudent(id, parsed.data);
   return apiSuccess(updated);
 }
 
 /** DELETE /api/v1/students/:id — أرشفة (Soft Delete) لا حذف فعلي — الدور: Admin فقط */
 export async function DELETE(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
   if (!hasRole(session.user.role, ["ADMIN"])) {
     return apiError("FORBIDDEN", "لا صلاحية لأرشفة الطالب");
   }
 
-  const archived = await archiveStudent(params.id);
+  const archived = await archiveStudent(id);
   return apiSuccess(archived);
-}
+                                      }
