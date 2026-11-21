@@ -15,7 +15,7 @@ export async function requireSession(allowedRoles?: Role[]) {
     redirect("/login");
   }
 
-  if (allowedRoles && !hasRole(session.user.role as Role, allowedRoles)) {
+  if (allowedRoles && !hasRole(session.user.role, allowedRoles)) {
     redirect("/");
   }
 
