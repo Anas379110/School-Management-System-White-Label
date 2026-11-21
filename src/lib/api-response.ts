@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
  * ويختلف بالخطأ بمكان عن آخر.
  */
 export function apiError(
-  code: "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_ERROR" | "CONFLICT",
+  code: "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION_ERROR" | "CONFLICT" | "SERVICE_UNAVAILABLE",
   message: string
 ) {
   const statusMap: Record<string, number> = {
@@ -15,6 +15,7 @@ export function apiError(
     NOT_FOUND: 404,
     VALIDATION_ERROR: 400,
     CONFLICT: 409,
+    SERVICE_UNAVAILABLE: 503,
   };
 
   return NextResponse.json({ error: { code, message } }, { status: statusMap[code] });
