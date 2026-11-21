@@ -12,19 +12,19 @@ export default async function GradesClassPage({
   params,
   searchParams,
 }: {
-  params: { classRoomId: string };
-  searchParams: { subjectId?: string };
+  params: Promise<{ classRoomId: string }>;
+  searchParams: Promise<{ subjectId?: string }>;
 }) {
+  const { classRoomId } = await params;
+  const { subjectId } = await searchParams;
   const session = await requireSession(["TEACHER"]);
   const t = await getTranslations("grades");
 
-  const subjectId = searchParams.subjectId;
-
-  const assignment = subjectId
+    const assignment = subjectId
     ? await prisma.teacherAssignment.findFirst({
         where: {
           teacherUserId: session.user.id,
-          classRoomId: params.classRoomId,
+          classRoomId: classRoomId,
           subjectId,
         },
         include: { classRoom: true, subject: true },
@@ -43,7 +43,7 @@ export default async function GradesClassPage({
   }
 
   const enrollments = await prisma.enrollment.findMany({
-    where: { classRoomId: params.classRoomId },
+    where: { classRoomId: classRoomId },
     include: { student: true },
     orderBy: { student: { fullName: "asc" } },
   });
