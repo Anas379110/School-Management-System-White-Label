@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const {
@@ -26,15 +27,21 @@ export function ForgotPasswordForm() {
   async function onSubmit(data: RequestPasswordResetInput) {
     setSuccessMessage(null);
 
-    await fetch("/api/v1/auth/reset-password/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    // نعرض رسالة النجاح دائماً بغض النظر عن استجابة الخادم — الخادم نفسه يُعيد
-    // نفس الرسالة العامة دائماً (راجع الـ Route: لا كشف وجود البريد من عدمه)
-    setSuccessMessage(t("resetRequestSuccess"));
+    setErrorMessage(null);
+    try {
+      const response = await fetch("/api/v1/auth/reset-password/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        setErrorMessage(t("resetRequestUnavailable"));
+        return;
+      }
+      setSuccessMessage(t("resetRequestSuccess"));
+    } catch {
+      setErrorMessage(t("resetRequestUnavailable"));
+    }
   }
 
   if (successMessage) {
@@ -51,9 +58,10 @@ export function ForgotPasswordForm() {
         error={errors.email?.message}
         {...register("email")}
       />
+      {errorMessage && <p role="alert" className="text-sm text-red-700">{errorMessage}</p>}
       <Button type="submit" isLoading={isSubmitting}>
         {isSubmitting ? t("submitting") : t("resetRequestButton")}
       </Button>
     </form>
   );
-}
+        }
