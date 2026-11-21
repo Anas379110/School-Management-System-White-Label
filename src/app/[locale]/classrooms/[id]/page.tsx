@@ -11,13 +11,14 @@ import { AddSubjectControl } from "@/modules/academic/AddSubjectControl";
  * راجع DECISIONS.md — هذه الصفحة تسدّ فجوة وظيفية كانت تمنع أي استخدام فعلي
  * للنظام: كانت هناك طريقة لإنشاء طلاب وفصول منفصلَين، لكن لا واجهة لربطهما.
  */
-export default async function ClassRoomDetailPage({ params }: { params: { id: string } }) {
+export default async function ClassRoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await requireSession(["ADMIN", "TEACHER"]);
   const t = await getTranslations("students");
   const enrollT = await getTranslations("enrollments");
   const assignT = await getTranslations("teacherAssignments");
 
-  const data = await getClassRoomWithStudents(params.id);
+  const data = await getClassRoomWithStudents(id);
   if (!data) {
     return (
       <main className="mx-auto max-w-md px-4 py-16 text-center">
@@ -27,12 +28,12 @@ export default async function ClassRoomDetailPage({ params }: { params: { id: st
   }
 
   const isAdmin = session.user.role === "ADMIN";
-  const unenrolled = isAdmin ? await getUnenrolledStudents(params.id) : [];
+  const unenrolled = isAdmin ? await getUnenrolledStudents(id) : [];
   const [teachers, subjects, currentAssignments] = isAdmin
     ? await Promise.all([
         listTeachers(),
         listSubjects(),
-        getTeacherAssignmentsForClassRoom(params.id),
+        getTeacherAssignmentsForClassRoom(id),
       ])
     : [[], [], []];
 
@@ -49,7 +50,7 @@ export default async function ClassRoomDetailPage({ params }: { params: { id: st
           <h2 className="mb-2 text-sm font-semibold text-neutral-700">{assignT("manageTeachers")}</h2>
           <AddSubjectControl />
           <AssignTeacherControl
-            classRoomId={params.id}
+            classRoomId={id}
             teachers={teachers.map((tt) => ({ id: tt.id, label: `${tt.fullName} (${tt.email})` }))}
             subjects={subjects.map((s) => ({ id: s.id, label: s.name }))}
           />
@@ -65,7 +66,7 @@ export default async function ClassRoomDetailPage({ params }: { params: { id: st
           )}
 
           <h2 className="mb-2 text-sm font-semibold text-neutral-700">{enrollT("manageRoster")}</h2>
-          <EnrollStudentControl classRoomId={params.id} availableStudents={unenrolled} />
+          <EnrollStudentControl classRoomId={id} availableStudents={unenrolled} />
         </>
       )}
 
@@ -90,4 +91,4 @@ export default async function ClassRoomDetailPage({ params }: { params: { id: st
       )}
     </main>
   );
-}
+        }
