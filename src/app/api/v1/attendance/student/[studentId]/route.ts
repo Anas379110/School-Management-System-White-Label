@@ -10,7 +10,7 @@ import {
 import { getAttendanceForStudent } from "@/modules/attendance/service";
 import type { Role } from "@prisma/client";
 
-type Params = { params: { studentId: string } };
+type Params = { params: Promise<{ studentId: string }> };
 
 /**
  * GET /api/v1/attendance/student/:studentId
@@ -18,6 +18,7 @@ type Params = { params: { studentId: string } };
  * (canAccessStudent) حتى لا تتشتت قاعدة "من يصل لبيانات أي طالب" بين Endpoints.
  */
 export async function GET(_request: NextRequest, { params }: Params) {
+  const { studentId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
 
@@ -25,9 +26,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const userId = session.user.id;
 
   if (role !== "ADMIN" && role !== "ACCOUNTANT") {
-    const { guardianUserId, ownUserId } = await getStudentAccessInfo(params.studentId);
+    const { guardianUserId, ownUserId } = await getStudentAccessInfo(studentId);
     const isTeacherOfStudent =
-      role === "TEACHER" ? await isTeacherAssignedToStudent(userId, params.studentId) : false;
+      role === "TEACHER" ? await isTeacherAssignedToStudent(userId, studentId) : false;
 
     const allowed = canAccessStudent({
       requesterRole: role,
@@ -42,6 +43,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
     }
   }
 
-  const records = await getAttendanceForStudent(params.studentId);
+  const records = await getAttendanceForStudent(studentId);
   return apiSuccess({ items: records });
 }
