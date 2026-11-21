@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { markNotificationAsRead } from "@/modules/notifications/service";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 /**
  * PATCH /api/v1/notifications/:id/read
@@ -12,10 +12,11 @@ type Params = { params: { id: string } };
  * لمستخدم آخر من عدمه).
  */
 export async function PATCH(_request: Request, { params }: Params) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
 
-  const result = await markNotificationAsRead(params.id, session.user.id);
+  const result = await markNotificationAsRead(id, session.user.id);
   if (!result) return apiError("NOT_FOUND", "الإشعار غير موجود");
 
   return apiSuccess(result);
