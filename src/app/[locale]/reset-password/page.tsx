@@ -4,10 +4,10 @@ import { ResetPasswordForm } from "@/modules/auth/ResetPasswordForm";
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: { token?: string };
+  searchParams: Promise<{ token?: string }>;
 }) {
   const t = await getTranslations("auth");
-  const token = searchParams.token;
+  const { token } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
