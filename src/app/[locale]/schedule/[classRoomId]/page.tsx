@@ -13,15 +13,16 @@ import { CreateScheduleEntryForm } from "@/modules/schedule/CreateScheduleEntryF
 export default async function ScheduleClassPage({
   params,
 }: {
-  params: { classRoomId: string };
+  params: Promise<{ classRoomId: string }>;
 }) {
+  const { classRoomId } = await params;
   const session = await requireSession(["ADMIN", "TEACHER", "PARENT", "STUDENT", "ACCOUNTANT"]);
   const t = await getTranslations("schedule");
 
   const { role, id: userId } = session.user;
 
   if (role !== "ADMIN" && role !== "ACCOUNTANT") {
-    const related = await isUserRelatedToClassRoom({ role, userId, classRoomId: params.classRoomId });
+    const related = await isUserRelatedToClassRoom({ role, userId, classRoomId: classRoomId });
     if (!related) {
       return (
         <main className="mx-auto max-w-md px-4 py-16 text-center">
@@ -31,8 +32,8 @@ export default async function ScheduleClassPage({
     }
   }
 
-  const classRoom = await prisma.classRoom.findUnique({ where: { id: params.classRoomId } });
-  const entries = await getScheduleForClassRoom(params.classRoomId);
+  const classRoom = await prisma.classRoom.findUnique({ where: { id: classRoomId } });
+  const entries = await getScheduleForClassRoom(classRoomId);
   const subjects = role === "ADMIN" ? await listSubjects() : [];
 
   return (
@@ -42,7 +43,7 @@ export default async function ScheduleClassPage({
 
       {role === "ADMIN" && (
         <div className="mb-6">
-          <CreateScheduleEntryForm classRoomId={params.classRoomId} subjects={subjects} />
+          <CreateScheduleEntryForm classRoomId={classRoomId} subjects={subjects} />
         </div>
       )}
 
@@ -80,4 +81,4 @@ export default async function ScheduleClassPage({
       </Link>
     </main>
   );
-}
+                  }
