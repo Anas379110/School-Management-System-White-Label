@@ -12,24 +12,24 @@ import { getGradesForStudent } from "@/modules/grades/service";
 import { getInvoicesForStudent } from "@/modules/financial/service";
 import { RecordManualPaymentForm } from "@/modules/financial/RecordManualPaymentForm";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import type { Role } from "@prisma/client";
 
 /**
  * أهم شاشة أمنياً بالمشروع حتى الآن — راجع security-reviewer Agent إلزامياً.
  * تُطبّق نفس منطق RBAC المستخدم بـ API Route (canAccessStudent) لضمان اتساق
  * القاعدة بين الواجهة والـ API (مصدر حقيقة واحد بـ src/modules/auth/rbac.ts).
  */
-export default async function StudentDetailPage({ params }: { params: { id: string } }) {
+export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await requireSession(["ADMIN", "TEACHER", "PARENT", "ACCOUNTANT", "STUDENT"]);
   const t = await getTranslations("students");
 
-  const role = session.user.role as Role;
+  const role = session.user.role;
   const userId = session.user.id;
 
   if (role !== "ADMIN" && role !== "ACCOUNTANT") {
-    const { guardianUserId, ownUserId } = await getStudentAccessInfo(params.id);
+    const { guardianUserId, ownUserId } = await getStudentAccessInfo(id);
     const isTeacherOfStudent =
-      role === "TEACHER" ? await isTeacherAssignedToStudent(userId, params.id) : false;
+      role === "TEACHER" ? await isTeacherAssignedToStudent(userId, id) : false;
 
     const allowed = canAccessStudent({
       requesterRole: role,
@@ -52,7 +52,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
     }
   }
 
-  const student = await getStudentById(params.id);
+  const student = await getStudentById(id);
 
   if (!student) {
     return (
@@ -227,4 +227,4 @@ async function AttendanceHistorySection({ studentId }: { studentId: string }) {
       )}
     </div>
   );
-}
+                    }
