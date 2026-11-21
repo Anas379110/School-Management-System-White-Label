@@ -1,85 +1,54 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { ArrowUpRight, ChevronRight, Sparkles, CheckCircle2, Bell } from "lucide-react";
 import { requireSession } from "@/lib/session";
 import { getSchoolSettings } from "@/modules/branding/getSchoolSettings";
 import { countUnreadNotifications } from "@/modules/notifications/service";
-import { SignOutButton } from "@/modules/auth/SignOutButton";
+import { WorkspaceShell } from "@/components/layout/WorkspaceShell";
+import { LearningIllustration, SectionIcon } from "@/components/ui/SchoolIcons";
+import { localizedPath, workspaceLinks } from "@/modules/dashboard/navigation";
 
-/**
- * راجع DECISIONS.md — كانت هذه الصفحة لا تزال بنسختها الأولية من Increment 1
- * (Auth+Branding) بلا أي رابط تنقّل لأي من الوحدات الست المبنية لاحقاً، ما كان
- * يعني عملياً عدم وجود طريقة استخدام فعلية للنظام إلا بكتابة روابط يدوياً.
- * هذه اللوحة الآن تعرض روابط مخصصة لكل دور حسب صلاحياته الفعلية.
- */
 export default async function HomePage() {
   const session = await requireSession();
-  const common = await getTranslations("common");
-  const dashT = await getTranslations("dashboard");
-
+  const t = await getTranslations("workspace");
+  const dashboard = await getTranslations("dashboard");
+  const locale = await getLocale();
   const settings = await getSchoolSettings();
-  const role = session.user.role;
-
   const unreadCount = await countUnreadNotifications(session.user.id);
-
-  const linksByRole: Record<string, { href: string; label: string }[]> = {
-    ADMIN: [
-      { href: "/students", label: dashT("students") },
-      { href: "/classrooms", label: dashT("classrooms") },
-      { href: "/finance/summary", label: dashT("finance") },
-    ],
-    TEACHER: [
-      { href: "/attendance", label: dashT("attendance") },
-      { href: "/grades", label: dashT("grades") },
-    ],
-    PARENT: [
-      { href: "/students", label: dashT("myChildren") },
-      { href: "/finance/summary", label: dashT("finance") },
-    ],
-    ACCOUNTANT: [
-      { href: "/finance/fee-structures", label: dashT("finance") },
-      { href: "/students", label: dashT("students") },
-    ],
-    STUDENT: [],
-  };
-
-  const links = linksByRole[role] ?? [];
+  const links = workspaceLinks(session.user.role).filter(link => link.key !== "home" && link.key !== "notifications");
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900">
-            {common("appName")} — {settings.schoolName}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {dashT("welcome")} {session.user.name}
-          </p>
+    <WorkspaceShell active="home" role={session.user.role} userName={session.user.name ?? ""} schoolName={settings.schoolName} title={t("home")}>
+      <section className="welcome-banner" aria-labelledby="welcome-title">
+        <div className="welcome-copy">
+          <span className="eyebrow-pill"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" />{t("schoolWorkspace")}</span>
+          <h1 id="welcome-title">{t("hello", { name: session.user.name ?? "" })}</h1>
+          <p>{t("welcomeDescription")}</p>
+          {links[0] && <Link className="hero-button" href={localizedPath(locale, links[0].href)}>{dashboard(links[0].labelKey)}<ArrowUpRight className="directional-icon h-4 w-4" aria-hidden="true" /></Link>}
         </div>
-        <SignOutButton />
-      </div>
+        <LearningIllustration />
+      </section>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="rounded-xl border border-neutral-200 bg-white p-4 text-center text-sm font-medium text-neutral-900 hover:border-brand hover:text-brand"
-          >
-            {link.label}
+      <section className="module-section" aria-labelledby="modules-title">
+        <div className="section-heading"><div><p className="section-kicker">{t("workspace")}</p><h2 id="modules-title">{t("yourModules")}</h2></div><span className="role-chip">{t(`roles.${session.user.role}`)}</span></div>
+        <div className="module-grid">
+          {links.map((link, index) => (
+            <Link key={link.key} href={localizedPath(locale, link.href)} className={`module-card module-tone-${index % 3}`}>
+              <div className="module-card-top"><span className="module-icon"><SectionIcon section={link.key} className="h-6 w-6" /></span><ArrowUpRight aria-hidden="true" className="directional-icon module-arrow h-5 w-5" /></div>
+              <h3>{dashboard(link.labelKey)}</h3><p>{t(`descriptions.${link.key}`)}</p><span className="module-open">{t("openModule")}<ChevronRight className="directional-icon h-4 w-4" aria-hidden="true" /></span>
+            </Link>
+          ))}
+          <Link href={localizedPath(locale, "/notifications")} className="module-card module-tone-notifications">
+            <div className="module-card-top"><span className="module-icon"><Bell className="h-6 w-6" aria-hidden="true" /></span><span className="notification-number">{unreadCount > 99 ? "99+" : unreadCount}</span></div>
+            <h3>{dashboard("notifications")}</h3><p>{t("descriptions.notifications")}</p><span className="module-open">{t("openModule")}<ChevronRight className="directional-icon h-4 w-4" aria-hidden="true" /></span>
           </Link>
-        ))}
-        <Link
-          href="/notifications"
-          className="relative rounded-xl border border-neutral-200 bg-white p-4 text-center text-sm font-medium text-neutral-900 hover:border-brand hover:text-brand"
-        >
-          {dashT("notifications")}
-          {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -end-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </Link>
-      </div>
-    </main>
+        </div>
+      </section>
+
+      <section className="workspace-bottom-grid" aria-label={t("helpfulInformation")}>
+        <div className="notification-panel"><span className="panel-icon"><CheckCircle2 className="h-6 w-6" aria-hidden="true" /></span><div><h2>{unreadCount === 0 ? t("allCaughtUp") : t("unreadTitle", { count: unreadCount })}</h2><p>{unreadCount === 0 ? t("allCaughtUpDescription") : t("unreadDescription")}</p></div><Link href={localizedPath(locale, "/notifications")} className="text-link">{t("viewNotifications")}<ChevronRight className="directional-icon h-4 w-4" aria-hidden="true" /></Link></div>
+        <div className="workspace-note"><span className="note-accent" /><p>{t("workspaceNote")}</p></div>
+      </section>
+    </WorkspaceShell>
   );
-}
+                                                                                                                                                                                          }
