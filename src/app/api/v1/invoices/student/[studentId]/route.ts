@@ -7,7 +7,7 @@ import { getStudentAccessInfo } from "@/modules/academic/service";
 import { getInvoicesForStudent } from "@/modules/financial/service";
 import type { Role } from "@prisma/client";
 
-type Params = { params: { studentId: string } };
+type Params = { params: Promise<{ studentId: string }> };
 
 /**
  * GET /api/v1/invoices/student/:studentId — راجع docs/api/API.md
@@ -15,6 +15,7 @@ type Params = { params: { studentId: string } };
  * ليست من اختصاصه، بخلاف الحضور/الدرجات).
  */
 export async function GET(_request: NextRequest, { params }: Params) {
+  const { studentId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return apiError("UNAUTHORIZED", "يجب تسجيل الدخول");
 
@@ -22,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const userId = session.user.id;
 
   if (role !== "ADMIN" && role !== "ACCOUNTANT") {
-    const { guardianUserId, ownUserId } = await getStudentAccessInfo(params.studentId);
+    const { guardianUserId, ownUserId } = await getStudentAccessInfo(studentId);
 
     const allowed = canAccessStudent({
       requesterRole: role,
@@ -36,6 +37,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
     if (!allowed) return apiError("FORBIDDEN", "لا صلاحية للوصول لفواتير هذا الطالب");
   }
 
-  const invoices = await getInvoicesForStudent(params.studentId);
+  const invoices = await getInvoicesForStudent(studentId);
   return apiSuccess({ items: invoices });
 }
