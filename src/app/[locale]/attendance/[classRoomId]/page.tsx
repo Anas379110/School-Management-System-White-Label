@@ -12,13 +12,14 @@ import { AttendanceSheet } from "@/modules/attendance/AttendanceSheet";
 export default async function AttendanceClassPage({
   params,
 }: {
-  params: { classRoomId: string };
+  params: Promise<{ classRoomId: string }>;
 }) {
+  const { classRoomId } = await params;
   const session = await requireSession(["TEACHER"]);
   const t = await getTranslations("attendance");
 
   const assignment = await prisma.teacherAssignment.findFirst({
-    where: { teacherUserId: session.user.id, classRoomId: params.classRoomId },
+    where: { teacherUserId: session.user.id, classRoomId: classRoomId },
     include: { classRoom: true },
   });
 
@@ -37,7 +38,7 @@ export default async function AttendanceClassPage({
   today.setHours(0, 0, 0, 0);
   const dateString = today.toISOString().split("T")[0];
 
-  const rows = await getAttendanceSheet(params.classRoomId, today);
+  const rows = await getAttendanceSheet(classRoomId, today);
 
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
@@ -51,7 +52,7 @@ export default async function AttendanceClassPage({
         {t("date")}: {today.toLocaleDateString()}
       </p>
 
-      <AttendanceSheet classRoomId={params.classRoomId} initialRows={rows} date={dateString} />
+      <AttendanceSheet classRoomId={classRoomId} initialRows={rows} date={dateString} />
     </main>
   );
 }
