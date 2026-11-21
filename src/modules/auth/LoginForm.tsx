@@ -51,6 +51,8 @@ export function LoginForm() {
       <Input
         id="email"
         type="email"
+        autoComplete="username"
+        dir="ltr"
         label={t("emailLabel")}
         placeholder={t("emailPlaceholder")}
         error={errors.email ? t("invalidCredentials") : undefined}
@@ -59,6 +61,8 @@ export function LoginForm() {
       <Input
         id="password"
         type="password"
+        autoComplete="current-password"
+        dir="ltr"
         label={t("passwordLabel")}
         placeholder={t("passwordPlaceholder")}
         error={errors.password ? t("invalidCredentials") : undefined}
