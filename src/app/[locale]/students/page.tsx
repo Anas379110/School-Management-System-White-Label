@@ -1,77 +1,35 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { Plus, Users, ChevronRight } from "lucide-react";
 import { requireSession } from "@/lib/session";
 import { listStudents, listStudentsForGuardian } from "@/modules/academic/service";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { WorkspaceShell } from "@/components/layout/WorkspaceShell";
+import { getSchoolSettings } from "@/modules/branding/getSchoolSettings";
+import { localizedPath } from "@/modules/dashboard/navigation";
 
-/**
- * راجع docs/design/UI-UX.md — شاشة "قائمة/تفاصيل الطلاب" (Admin, Teacher).
- * لولي الأمر شاشة مختلفة منطقياً (أبناؤه فقط) لكن نفس المسار — لا حاجة صفحة منفصلة
- * بهذه المرحلة، الفرق بالبيانات المُعادة فقط (تُطبَّق بـ Service Layer مسبقاً).
- */
 export default async function StudentsPage() {
   const session = await requireSession(["ADMIN", "TEACHER", "PARENT", "ACCOUNTANT"]);
   const t = await getTranslations("students");
-  const common = await getTranslations("common");
-
+  const ui = await getTranslations("workspace");
+  const locale = await getLocale();
+  const settings = await getSchoolSettings();
   const role = session.user.role;
-  const students =
-    role === "PARENT"
-      ? await listStudentsForGuardian(session.user.id)
-      : (await listStudents({ page: 1, limit: 50 })).items;
-
+  const students = role === "PARENT" ? await listStudentsForGuardian(session.user.id) : (await listStudents({ page: 1, limit: 50 })).items;
   const canAdd = role === "ADMIN";
+  const addLink = <Link href={localizedPath(locale, "/students/new")} className="page-action"><Plus className="h-4 w-4" aria-hidden="true" />{t("addStudent")}</Link>;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-neutral-900">{t("title")}</h1>
-        {canAdd && (
-          <Link
-            href="/students/new"
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-fg hover:opacity-90"
-          >
-            {t("addStudent")}
-          </Link>
+    <WorkspaceShell active="students" role={role} userName={session.user.name ?? ""} schoolName={settings.schoolName} title={t("title")}>
+      <div className="page-title-row"><div><p className="section-kicker">{ui("workspace")}</p><h1>{t("title")}</h1><p>{ui("studentsSubtitle")}</p></div>{canAdd && addLink}</div>
+      <section className="content-panel" aria-labelledby="student-directory-title">
+        <div className="content-panel-header"><h2 id="student-directory-title">{ui("studentList")}</h2><Users className="h-5 w-5 text-slate-400" aria-hidden="true" /></div>
+        {students.length === 0 ? (
+          <div className="empty-state"><span className="empty-icon"><Users className="h-9 w-9" strokeWidth={1.3} aria-hidden="true" /></span><h2>{canAdd ? ui("studentEmptyTitle") : t("emptyState")}</h2>{canAdd && <><p>{ui("studentEmptyDescription")}</p>{addLink}</>}</div>
+        ) : (
+          <ul className="workspace-list">{students.map(student => <li key={student.id} className="workspace-list-row"><div className="workspace-list-name"><span className="workspace-list-avatar" aria-hidden="true">{student.fullName.charAt(0)}</span><span className="font-semibold">{student.fullName}</span><StatusBadge status={student.status as "active" | "archived"} activeLabel={t("statusActive")} archivedLabel={t("statusArchived")} /></div><Link href={localizedPath(locale, `/students/${student.id}`)}>{t("viewDetails")}<ChevronRight className="directional-icon ms-1 h-4 w-4" aria-hidden="true" /></Link></li>)}</ul>
         )}
-      </div>
-
-      {students.length === 0 ? (
-        // راجع docs/design/UI-UX.md القسم 7 — Empty State بلا صمت
-        <div className="rounded-xl border border-dashed border-neutral-300 p-10 text-center text-neutral-500">
-          <p className="mb-3">{t("emptyState")}</p>
-          {canAdd && (
-            <Link href="/students/new" className="text-sm font-medium text-brand hover:underline">
-              {t("emptyStateAction")}
-            </Link>
-          )}
-        </div>
-      ) : (
-        <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
-          {students.map((student) => (
-            <li key={student.id} className="flex items-center justify-between px-4 py-3.5">
-              <div className="flex items-center gap-3">
-                <span className="font-medium text-neutral-900">{student.fullName}</span>
-                <StatusBadge
-                  status={student.status as "active" | "archived"}
-                  activeLabel={t("statusActive")}
-                  archivedLabel={t("statusArchived")}
-                />
-              </div>
-              <Link
-                href={`/students/${student.id}`}
-                className="text-sm font-medium text-brand hover:underline"
-              >
-                {t("viewDetails")}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Link href="/" className="mt-6 inline-block text-sm text-neutral-500 hover:text-brand">
-        ← {common("cancel")}
-      </Link>
-    </main>
+      </section>
+    </WorkspaceShell>
   );
 }

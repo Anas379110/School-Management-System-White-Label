@@ -1,5 +1,6 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 
@@ -8,10 +9,11 @@ export function SignOutButton() {
 
   return (
     <button
+      aria-label={t("signOut")}
       onClick={() => signOut({ callbackUrl: "/login" })}
-      className="text-sm text-neutral-500 hover:text-brand"
+      className="workspace-signout"
     >
-      {t("signOut")}
+      <LogOut className="h-4 w-4" aria-hidden="true" /><span>{t("signOut")}</span>
     </button>
   );
 }

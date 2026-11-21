@@ -11,7 +11,8 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`inline-flex w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5
+        aria-busy={Boolean(isLoading)}
+        className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5
           text-sm font-semibold text-brand-fg transition-opacity
           hover:opacity-90 focus-visible:outline focus-visible:outline-2
           focus-visible:outline-offset-2 focus-visible:outline-brand
