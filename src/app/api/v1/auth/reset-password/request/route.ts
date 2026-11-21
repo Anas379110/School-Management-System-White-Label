@@ -21,6 +21,12 @@ export async function POST(request: NextRequest) {
   const parsed = requestPasswordResetSchema.safeParse(body);
   if (!parsed.success) return apiError("VALIDATION_ERROR", "بريد إلكتروني غير صحيح");
 
+  // Fail before looking up the email so availability never reveals account existence.
+  if (process.env.NODE_ENV === "production" &&
+      (!process.env.RESEND_API_KEY || !process.env.RESET_EMAIL_FROM)) {
+    return apiError("SERVICE_UNAVAILABLE", "خدمة استعادة كلمة المرور غير متاحة في النسخة التجريبية");
+  }
+
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
 
   if (user && user.isActive) {
@@ -44,8 +50,15 @@ async function sendResetEmailBestEffort(email: string, token: string) {
   const resetLink = `${appUrl}/reset-password?token=${token}`;
 
   if (!apiKey) {
-    // بيئة تطوير محلية بلا مفتاح Resend — نطبع الرابط بالـ Console بدل الفشل الصامت
-    console.log(`[DEV] رابط إعادة تعيين كلمة المرور لـ ${email}: ${resetLink}`);
+    if (process.env.NODE_ENV !== "production") {
+      // بيئة تطوير محلية بلا مفتاح Resend — نطبع الرابط بالـ Console بدل الفشل الصامت
+      console.log(`[DEV] رابط إعادة تعيين كلمة المرور لـ ${email}: ${resetLink}`);
+    } else {
+      // إنتاج بلا بريد مُعَد: لا نطبع الرابط أبداً (يحتوي رمزاً خاماً يساوي كلمة
+      // مرور مؤقتة — تسريبه في سجلات الاستضافة يكسر أمن الحساب). نكتفي بتنبيه
+      // تشغيلي بلا أي بيانات حساسة، والمستخدم يرى نفس الرسالة الموحدة دائماً.
+      console.warn("password reset requested but RESEND_API_KEY is not configured");
+    }
     return;
   }
 
@@ -57,7 +70,7 @@ async function sendResetEmailBestEffort(email: string, token: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "noreply@school-system.example",
+        from: process.env.RESET_EMAIL_FROM,
         to: email,
         subject: "إعادة تعيين كلمة المرور",
         html: `<p>اضغط الرابط التالي لإعادة تعيين كلمة المرور (صالح لساعة واحدة): <a href="${resetLink}">${resetLink}</a></p>`,
